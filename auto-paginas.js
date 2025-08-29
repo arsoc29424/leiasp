@@ -1,171 +1,172 @@
-(function () {
-    let intervalo = null;
-    let darkMode = true;
+(function() {
+  let autoRunning = false;
+  let interval = 30; // valor inicial em segundos
+  let randomMode = false;
+  let autoPageInterval;
+  let isDarkMode = false;
 
-    // ===== Criar GUI =====
-    let gui = document.createElement("div");
-    gui.style.position = "fixed";
-    gui.style.top = "20px";
-    gui.style.right = "20px";
-    gui.style.padding = "15px";
-    gui.style.background = "#2c3e50";
-    gui.style.color = "#ecf0f1";
-    gui.style.fontFamily = "Arial, sans-serif";
-    gui.style.borderRadius = "15px";
-    gui.style.boxShadow = "0 6px 18px rgba(0,0,0,0.5)";
-    gui.style.zIndex = "999999";
-    gui.style.width = "230px";
-    gui.style.textAlign = "center";
-    gui.style.cursor = "move";
+  // ---- GUI ----
+  const gui = document.createElement("div");
+  gui.style.position = "fixed";
+  gui.style.top = "20px";
+  gui.style.right = "20px";
+  gui.style.zIndex = "99999";
+  gui.style.background = "#ffffff";
+  gui.style.color = "#333";
+  gui.style.padding = "15px";
+  gui.style.borderRadius = "12px";
+  gui.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
+  gui.style.width = "220px";
+  gui.style.cursor = "move";
+  gui.style.fontFamily = "Arial, sans-serif";
+  gui.innerHTML = `
+    <h3 style="margin:0 0 10px 0; font-size:16px; text-align:center;">Lean Leia Sp</h3>
+    <div>Status: <span id="status-indicator" style="font-weight:bold; color:red;">OFF</span></div>
+    <label style="display:block; margin-top:10px;">⏱ Tempo (s): 
+      <input id="time-slider" type="range" min="5" max="120" value="${interval}" style="width:100%;">
+      <span id="time-value">${interval}</span>s
+    </label>
+    <label style="display:block; margin-top:10px;">
+      <input type="checkbox" id="random-mode"> ⤭ Modo Aleatório
+    </label>
+    <button id="toggle-btn" style="margin-top:10px; padding:6px 10px; width:100%; border:none; border-radius:8px; background:#406a76; color:white; font-size:14px; cursor:pointer;">Iniciar</button>
+    <button id="theme-btn" style="margin-top:10px; padding:6px 10px; width:100%; border:none; border-radius:8px; background:#888; color:white; font-size:14px; cursor:pointer;">🌙 Dark Mode</button>
+  `;
+  document.body.appendChild(gui);
 
-    gui.innerHTML = `
-        <h3 style="margin:0 0 10px 0; font-size:16px;">📖 Lean Leia Sp</h3>
-        <div id="status" style="margin-bottom:8px; font-weight:bold; color:#e74c3c;">🔴 OFF</div>
+  const statusIndicator = gui.querySelector("#status-indicator");
+  const slider = gui.querySelector("#time-slider");
+  const timeValue = gui.querySelector("#time-value");
+  const randomCheckbox = gui.querySelector("#random-mode");
+  const toggleBtn = gui.querySelector("#toggle-btn");
+  const themeBtn = gui.querySelector("#theme-btn");
 
-        <label style="font-size:14px;">⏱ Tempo (s): <span id="tempoVal">5</span></label><br>
-        <input type="range" id="tempoSlider" min="1" max="120" value="5" style="width:100%; margin:5px 0;">
+  // ---- Logs ----
+  const logContainer = document.createElement("div");
+  logContainer.style.position = "fixed";
+  logContainer.style.bottom = "20px";
+  logContainer.style.right = "20px";
+  logContainer.style.display = "flex";
+  logContainer.style.flexDirection = "column-reverse"; // novos embaixo
+  logContainer.style.gap = "8px";
+  logContainer.style.zIndex = "99999";
+  document.body.appendChild(logContainer);
 
-        <label style="font-size:14px; display:block; margin-top:6px;">
-            <input type="checkbox" id="modoAleatorio"> ⤭ Modo Aleatório
-        </label>
+  function addLog(message, color = "#406a76") {
+    const log = document.createElement("div");
+    log.textContent = message;
+    log.style.background = color;
+    log.style.color = "white";
+    log.style.padding = "8px 12px";
+    log.style.borderRadius = "8px";
+    log.style.fontSize = "14px";
+    log.style.minWidth = "180px";
+    log.style.textAlign = "center";
+    log.style.opacity = "0";
+    log.style.transform = "translateY(20px)";
+    log.style.transition = "opacity 0.4s ease, transform 0.4s ease";
 
-        <br>
-        <button id="iniciarBtn" style="margin-top:8px; padding:6px 12px; border:none; border-radius:8px; background:#27ae60; color:white; cursor:pointer; font-weight:bold;">▶ Iniciar</button>
-        <button id="pararBtn" style="margin-top:5px; padding:6px 12px; border:none; border-radius:8px; background:#c0392b; color:white; cursor:pointer; font-weight:bold;">⏹ Parar</button>
-        <br>
-        <button id="modoBtn" style="margin-top:8px; padding:6px 12px; border:none; border-radius:8px; background:#8e44ad; color:white; cursor:pointer; font-weight:bold;">🌙 Dark/☀ Light</button>
-    `;
-    document.body.appendChild(gui);
+    logContainer.appendChild(log);
 
-    // ===== Criar container de logs =====
-    let logContainer = document.createElement("div");
-    logContainer.style.position = "fixed";
-    logContainer.style.bottom = "20px";
-    logContainer.style.left = "50%";
-    logContainer.style.transform = "translateX(-50%)";
-    logContainer.style.display = "flex";
-    logContainer.style.flexDirection = "column";
-    logContainer.style.alignItems = "center";
-    logContainer.style.gap = "8px";
-    logContainer.style.zIndex = "999999";
-    document.body.appendChild(logContainer);
+    requestAnimationFrame(() => {
+      log.style.opacity = "1";
+      log.style.transform = "translateY(0)";
+    });
 
-    // ===== Sistema de logs =====
-    function addLog(msg, color = "#3498db") {
-        let log = document.createElement("div");
-        log.textContent = msg;
-        log.style.background = color;
-        log.style.color = "white";
-        log.style.padding = "8px 14px";
-        log.style.borderRadius = "12px";
-        log.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)";
-        log.style.fontSize = "14px";
-        log.style.opacity = "0";
-        log.style.transform = "translateY(20px)"; // começa baixo
-        log.style.transition = "opacity 0.4s ease, transform 0.4s ease";
+    setTimeout(() => {
+      log.style.opacity = "0";
+      log.style.transform = "translateY(20px)";
+      setTimeout(() => log.remove(), 400);
+    }, 5000);
+  }
 
-        logContainer.appendChild(log);
-
-        // animação de entrada (sobe)
-        requestAnimationFrame(() => {
-            log.style.opacity = "1";
-            log.style.transform = "translateY(0)";
-        });
-
-        // animação de saída (sobe e desaparece)
-        setTimeout(() => {
-            log.style.opacity = "0";
-            log.style.transform = "translateY(-20px)";
-            setTimeout(() => log.remove(), 400);
-        }, 5000);
+  // ---- Dark / Light Mode ----
+  function toggleTheme() {
+    isDarkMode = !isDarkMode;
+    if (isDarkMode) {
+      gui.style.background = "#222";
+      gui.style.color = "#eee";
+      gui.style.boxShadow = "0 4px 12px rgba(255,255,255,0.2)";
+      themeBtn.textContent = "☀ Light Mode";
+      themeBtn.style.background = "#444";
+    } else {
+      gui.style.background = "#fff";
+      gui.style.color = "#333";
+      gui.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
+      themeBtn.textContent = "🌙 Dark Mode";
+      themeBtn.style.background = "#888";
     }
+  }
 
-    // ===== Função para mudar página =====
-    function mudarPagina() {
-        let botoes = document.querySelectorAll("button.sc-lkltAP.joPNDs");
-        if (botoes.length > 0) {
-            let botaoDireita = botoes[botoes.length - 1];
-            botaoDireita.click();
-            addLog("👉 Página virada!", "#2980b9");
-        } else {
-            addLog("⚠ Nenhum botão encontrado!", "#e67e22");
-        }
+  themeBtn.onclick = toggleTheme;
+
+  // ---- Draggable ----
+  let offsetX, offsetY, isDragging = false;
+
+  gui.addEventListener("mousedown", e => {
+    isDragging = true;
+    offsetX = e.clientX - gui.getBoundingClientRect().left;
+    offsetY = e.clientY - gui.getBoundingClientRect().top;
+  });
+  document.addEventListener("mouseup", () => isDragging = false);
+  document.addEventListener("mousemove", e => {
+    if (isDragging) {
+      gui.style.top = (e.clientY - offsetY) + "px";
+      gui.style.left = (e.clientX - offsetX) + "px";
+      gui.style.right = "auto";
     }
+  });
 
-    // ===== Iniciar/Parar =====
-    function iniciar() {
-        let sliderVal = parseInt(document.getElementById("tempoSlider").value, 10);
-        let aleatorio = document.getElementById("modoAleatorio").checked;
+  // ---- Controle ----
+  slider.oninput = () => {
+    interval = parseInt(slider.value, 10);
+    timeValue.textContent = interval;
+  };
 
-        if (intervalo) clearInterval(intervalo);
+  randomCheckbox.onchange = () => {
+    randomMode = randomCheckbox.checked;
+  };
 
-        if (aleatorio) {
-            function cicloAleatorio() {
-                mudarPagina();
-                let prox = Math.floor(Math.random() * (sliderVal - 1 + 1)) + 1;
-                intervalo = setTimeout(cicloAleatorio, prox * 1000);
-            }
-            cicloAleatorio();
-        } else {
-            intervalo = setInterval(mudarPagina, sliderVal * 1000);
-        }
-
-        document.getElementById("status").textContent = "🟢 ON";
-        document.getElementById("status").style.color = "#2ecc71";
-        addLog("▶ Auto leitura INICIADA", "#27ae60"); // log com animação
+  toggleBtn.onclick = () => {
+    autoRunning = !autoRunning;
+    if (autoRunning) {
+      statusIndicator.textContent = "ON";
+      statusIndicator.style.color = "green";
+      toggleBtn.textContent = "Parar";
+      addLog("▶ Auto-páginas iniciado", "#2e7d32");
+      scheduleNextPage();
+    } else {
+      statusIndicator.textContent = "OFF";
+      statusIndicator.style.color = "red";
+      toggleBtn.textContent = "Iniciar";
+      clearTimeout(autoPageInterval);
+      addLog("⏸ Auto-páginas parado", "#c62828");
     }
+  };
 
-    function parar() {
-        if (intervalo) {
-            clearInterval(intervalo);
-            clearTimeout(intervalo);
-        }
-        intervalo = null;
-        document.getElementById("status").textContent = "🔴 OFF";
-        document.getElementById("status").style.color = "#e74c3c";
-        addLog("⏹ Auto leitura PARADA", "#c0392b"); // log com animação
+  function clickNextButton() {
+    const buttons = document.querySelectorAll("button.sc-lkltAP.joPNDs");
+    if (buttons.length > 1) {
+      buttons[1].click(); // botão da direita
+      addLog("📖 Página virada!");
     }
+  }
 
-    // ===== Dark/Light mode =====
-    function toggleMode() {
-        darkMode = !darkMode;
-        if (darkMode) {
-            gui.style.background = "#2c3e50";
-            gui.style.color = "#ecf0f1";
-            addLog("🌙 Modo Escuro", "#8e44ad");
-        } else {
-            gui.style.background = "#ecf0f1";
-            gui.style.color = "#2c3e50";
-            addLog("☀ Modo Claro", "#f39c12");
-        }
+  function scheduleNextPage() {
+    clearTimeout(autoPageInterval);
+
+    if (autoRunning) {
+      let delay;
+      if (randomMode) {
+        delay = Math.floor(Math.random() * (120 - 15 + 1) + 15) * 1000; // 15s - 120s
+      } else {
+        delay = interval * 1000;
+      }
+
+      autoPageInterval = setTimeout(() => {
+        clickNextButton();
+        scheduleNextPage();
+      }, delay);
     }
-
-    // ===== Eventos =====
-    document.getElementById("tempoSlider").oninput = function () {
-        document.getElementById("tempoVal").textContent = this.value;
-    };
-
-    document.getElementById("iniciarBtn").onclick = iniciar;
-    document.getElementById("pararBtn").onclick = parar;
-    document.getElementById("modoBtn").onclick = toggleMode;
-
-    // ===== Tornar GUI arrastável =====
-    gui.onmousedown = function (e) {
-        let offsetX = e.clientX - gui.getBoundingClientRect().left;
-        let offsetY = e.clientY - gui.getBoundingClientRect().top;
-
-        function move(e) {
-            gui.style.left = (e.clientX - offsetX) + "px";
-            gui.style.top = (e.clientY - offsetY) + "px";
-            gui.style.right = "auto";
-        }
-
-        function stop() {
-            document.removeEventListener("mousemove", move);
-            document.removeEventListener("mouseup", stop);
-        }
-
-        document.addEventListener("mousemove", move);
-        document.addEventListener("mouseup", stop);
-    };
+  }
 })();
