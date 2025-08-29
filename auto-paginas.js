@@ -1,70 +1,130 @@
 (function() {
   let autoRunning = false;
-  let interval = 30; // valor inicial em segundos
-  let randomMode = false;
   let autoPageInterval;
-  let isDarkMode = false;
+  let interval = 30; // default
+  let randomMode = false;
+  let darkMode = false;
+  let fixed = false;
+  let language = "pt"; // padrão
 
-  // ---- GUI ----
+  const translations = {
+    pt: {
+      title: "Lean Leia Sp",
+      start: "Iniciar ▶",
+      stop: "Parar ⏸",
+      next: "Virar Agora ⚡",
+      random: "Modo Aleatório",
+      dark: "Dark/Light",
+      lock: "Fixar GUI 🔒",
+      unlock: "Desfixar GUI 🔓",
+      lang: "Idioma 🌐",
+      statusRunning: "Executando...",
+      statusStopped: "Parado."
+    },
+    en: {
+      title: "Lean Read Sp",
+      start: "Start ▶",
+      stop: "Stop ⏸",
+      next: "Next Now ⚡",
+      random: "Random Mode",
+      dark: "Dark/Light",
+      lock: "Lock GUI 🔒",
+      unlock: "Unlock GUI 🔓",
+      lang: "Language 🌐",
+      statusRunning: "Running...",
+      statusStopped: "Stopped."
+    }
+  };
+
+  function t(key) {
+    return translations[language][key];
+  }
+
+  // ===== GUI =====
   const gui = document.createElement("div");
   gui.style.position = "fixed";
   gui.style.top = "20px";
   gui.style.right = "20px";
-  gui.style.zIndex = "99999";
-  gui.style.background = "#ffffff";
-  gui.style.color = "#333";
-  gui.style.padding = "15px";
+  gui.style.background = "white";
+  gui.style.border = "1px solid #ccc";
   gui.style.borderRadius = "12px";
-  gui.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
-  gui.style.width = "220px";
-  gui.style.cursor = "move";
+  gui.style.padding = "12px";
+  gui.style.zIndex = 9999;
+  gui.style.width = "210px";
+  gui.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
   gui.style.fontFamily = "Arial, sans-serif";
+  gui.style.transition = "background 0.3s, color 0.3s";
+
   gui.innerHTML = `
-    <h3 style="margin:0 0 10px 0; font-size:16px; text-align:center;">Lean Leia Sp</h3>
-    <div>Status: <span id="status-indicator" style="font-weight:bold; color:red;">OFF</span></div>
-    <label style="display:block; margin-top:10px;">⏱ Tempo (s): 
-      <input id="time-slider" type="range" min="5" max="120" value="${interval}" style="width:100%;">
-      <span id="time-value">${interval}</span>s
-    </label>
-    <label style="display:block; margin-top:10px;">
-      <input type="checkbox" id="random-mode"> ⤭ Modo Aleatório
-    </label>
-    <button id="toggle-btn" style="margin-top:10px; padding:6px 10px; width:100%; border:none; border-radius:8px; background:#406a76; color:white; font-size:14px; cursor:pointer;">Iniciar</button>
-    <button id="theme-btn" style="margin-top:10px; padding:6px 10px; width:100%; border:none; border-radius:8px; background:#888; color:white; font-size:14px; cursor:pointer;">🌙 Dark Mode</button>
+    <h3 style="margin:0 0 10px 0; font-size:16px; text-align:center;">${t("title")}</h3>
+    <button id="startBtn">${t("start")}</button>
+    <button id="stopBtn">${t("stop")}</button>
+    <button id="nextBtn">${t("next")}</button>
+    <br><br>
+    <label>${t("random")} <input type="checkbox" id="randomMode"></label><br>
+    <label>${t("dark")} <input type="checkbox" id="darkMode"></label><br>
+    <button id="lockBtn">${t("lock")}</button>
+    <button id="langBtn">${t("lang")}</button>
+    <br><br>
+    <label>⏱ Intervalo: <span id="intervalLabel">${interval}</span>s</label>
+    <input type="range" id="intervalSlider" min="5" max="120" value="${interval}" style="width:100%;">
+    <br><br>
+    <div id="status" style="padding:5px; text-align:center; border-radius:8px; font-weight:bold; background:#f2f2f2;">${t("statusStopped")}</div>
   `;
+
   document.body.appendChild(gui);
 
-  const statusIndicator = gui.querySelector("#status-indicator");
-  const slider = gui.querySelector("#time-slider");
-  const timeValue = gui.querySelector("#time-value");
-  const randomCheckbox = gui.querySelector("#random-mode");
-  const toggleBtn = gui.querySelector("#toggle-btn");
-  const themeBtn = gui.querySelector("#theme-btn");
+  // ===== Botões =====
+  const startBtn = gui.querySelector("#startBtn");
+  const stopBtn = gui.querySelector("#stopBtn");
+  const nextBtn = gui.querySelector("#nextBtn");
+  const randomCheck = gui.querySelector("#randomMode");
+  const darkCheck = gui.querySelector("#darkMode");
+  const lockBtn = gui.querySelector("#lockBtn");
+  const langBtn = gui.querySelector("#langBtn");
+  const slider = gui.querySelector("#intervalSlider");
+  const label = gui.querySelector("#intervalLabel");
+  const status = gui.querySelector("#status");
 
-  // ---- Logs ----
+  // ===== Estilo dos botões =====
+  gui.querySelectorAll("button").forEach(btn => {
+    btn.style.margin = "3px";
+    btn.style.padding = "6px 10px";
+    btn.style.border = "none";
+    btn.style.borderRadius = "8px";
+    btn.style.cursor = "pointer";
+    btn.style.transition = "all 0.3s";
+    btn.onmouseover = () => btn.style.background = "#ddd";
+    btn.onmouseout = () => btn.style.background = "";
+  });
+
+  // ===== Logs =====
   const logContainer = document.createElement("div");
   logContainer.style.position = "fixed";
   logContainer.style.bottom = "20px";
   logContainer.style.right = "20px";
   logContainer.style.display = "flex";
-  logContainer.style.flexDirection = "column-reverse"; // novos embaixo
-  logContainer.style.gap = "8px";
-  logContainer.style.zIndex = "99999";
+  logContainer.style.flexDirection = "column-reverse";
+  logContainer.style.gap = "6px";
+  logContainer.style.zIndex = 9999;
   document.body.appendChild(logContainer);
 
-  function addLog(message, color = "#406a76") {
+  function logMessage(msg, type="info") {
     const log = document.createElement("div");
-    log.textContent = message;
-    log.style.background = color;
-    log.style.color = "white";
+    log.textContent = msg;
     log.style.padding = "8px 12px";
     log.style.borderRadius = "8px";
+    log.style.background = "#406a76";
+    log.style.color = "white";
     log.style.fontSize = "14px";
-    log.style.minWidth = "180px";
-    log.style.textAlign = "center";
+    log.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
     log.style.opacity = "0";
     log.style.transform = "translateY(20px)";
-    log.style.transition = "opacity 0.4s ease, transform 0.4s ease";
+    log.style.transition = "all 0.5s";
+
+    if(type==="start") log.textContent = "✅ " + msg;
+    if(type==="stop") log.textContent = "⏸ " + msg;
+    if(type==="page") log.textContent = "📖 " + msg;
 
     logContainer.appendChild(log);
 
@@ -76,89 +136,27 @@
     setTimeout(() => {
       log.style.opacity = "0";
       log.style.transform = "translateY(20px)";
-      setTimeout(() => log.remove(), 400);
+      setTimeout(() => log.remove(), 500);
     }, 5000);
   }
 
-  // ---- Dark / Light Mode ----
-  function toggleTheme() {
-    isDarkMode = !isDarkMode;
-    if (isDarkMode) {
-      gui.style.background = "#222";
-      gui.style.color = "#eee";
-      gui.style.boxShadow = "0 4px 12px rgba(255,255,255,0.2)";
-      themeBtn.textContent = "☀ Light Mode";
-      themeBtn.style.background = "#444";
-    } else {
-      gui.style.background = "#fff";
-      gui.style.color = "#333";
-      gui.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
-      themeBtn.textContent = "🌙 Dark Mode";
-      themeBtn.style.background = "#888";
-    }
-  }
-
-  themeBtn.onclick = toggleTheme;
-
-  // ---- Draggable ----
-  let offsetX, offsetY, isDragging = false;
-
-  gui.addEventListener("mousedown", e => {
-    isDragging = true;
-    offsetX = e.clientX - gui.getBoundingClientRect().left;
-    offsetY = e.clientY - gui.getBoundingClientRect().top;
-  });
-  document.addEventListener("mouseup", () => isDragging = false);
-  document.addEventListener("mousemove", e => {
-    if (isDragging) {
-      gui.style.top = (e.clientY - offsetY) + "px";
-      gui.style.left = (e.clientX - offsetX) + "px";
-      gui.style.right = "auto";
-    }
-  });
-
-  // ---- Controle ----
-  slider.oninput = () => {
-    interval = parseInt(slider.value, 10);
-    timeValue.textContent = interval;
-  };
-
-  randomCheckbox.onchange = () => {
-    randomMode = randomCheckbox.checked;
-  };
-
-  toggleBtn.onclick = () => {
-    autoRunning = !autoRunning;
-    if (autoRunning) {
-      statusIndicator.textContent = "ON";
-      statusIndicator.style.color = "green";
-      toggleBtn.textContent = "Parar";
-      addLog("▶ Auto-páginas iniciado", "#2e7d32");
-      scheduleNextPage();
-    } else {
-      statusIndicator.textContent = "OFF";
-      statusIndicator.style.color = "red";
-      toggleBtn.textContent = "Iniciar";
-      clearTimeout(autoPageInterval);
-      addLog("⏸ Auto-páginas parado", "#c62828");
-    }
-  };
-
+  // ===== Botão de virar página =====
   function clickNextButton() {
     const buttons = document.querySelectorAll("button.sc-lkltAP.joPNDs");
     if (buttons.length > 1) {
       buttons[1].click(); // botão da direita
-      addLog("📖 Página virada!");
+      logMessage(language==="pt" ? "Página virada" : "Page turned", "page");
     }
   }
 
+  // ===== Funções =====
   function scheduleNextPage() {
     clearTimeout(autoPageInterval);
 
     if (autoRunning) {
       let delay;
       if (randomMode) {
-        delay = Math.floor(Math.random() * (120 - 15 + 1) + 15) * 1000; // 15s - 120s
+        delay = Math.floor(Math.random() * (120 - 15 + 1) + 15) * 1000;
       } else {
         delay = interval * 1000;
       }
@@ -169,4 +167,93 @@
       }, delay);
     }
   }
+
+  function updateStatus() {
+    if(autoRunning){
+      status.textContent = t("statusRunning");
+      status.style.background = "#28a745";
+      status.style.color = "white";
+      status.style.boxShadow = "0 0 8px #28a745";
+    } else {
+      status.textContent = t("statusStopped");
+      status.style.background = "#f2f2f2";
+      status.style.color = "#333";
+      status.style.boxShadow = "0 0 0";
+    }
+  }
+
+  // ===== Event Listeners =====
+  startBtn.onclick = () => {
+    autoRunning = true;
+    logMessage(language==="pt" ? "Auto iniciado" : "Auto started","start");
+    updateStatus();
+    scheduleNextPage();
+  };
+
+  stopBtn.onclick = () => {
+    autoRunning = false;
+    clearTimeout(autoPageInterval);
+    logMessage(language==="pt" ? "Auto parado" : "Auto stopped","stop");
+    updateStatus();
+  };
+
+  nextBtn.onclick = () => {
+    clickNextButton();
+  };
+
+  randomCheck.onchange = e => randomMode = e.target.checked;
+  darkCheck.onchange = e => {
+    darkMode = e.target.checked;
+    gui.style.background = darkMode ? "#1e1e1e" : "white";
+    gui.style.color = darkMode ? "white" : "black";
+  };
+
+  slider.oninput = e => {
+    interval = parseInt(e.target.value);
+    label.textContent = interval;
+  };
+
+  langBtn.onclick = () => {
+    language = language === "pt" ? "en" : "pt";
+    gui.querySelector("h3").textContent = t("title");
+    startBtn.textContent = t("start");
+    stopBtn.textContent = t("stop");
+    nextBtn.textContent = t("next");
+    randomCheck.parentNode.firstChild.textContent = t("random")+" ";
+    darkCheck.parentNode.firstChild.textContent = t("dark")+" ";
+    lockBtn.textContent = fixed ? t("unlock") : t("lock");
+    langBtn.textContent = t("lang");
+    updateStatus();
+  };
+
+  lockBtn.onclick = () => {
+    fixed = !fixed;
+    lockBtn.textContent = fixed ? t("unlock") : t("lock");
+    if(fixed) {
+      gui.onmousedown = null;
+    } else {
+      makeDraggable(gui);
+    }
+  };
+
+  // ===== Drag =====
+  function makeDraggable(el) {
+    let offsetX, offsetY, dragging = false;
+    el.onmousedown = e => {
+      if(fixed) return;
+      dragging = true;
+      offsetX = e.clientX - el.offsetLeft;
+      offsetY = e.clientY - el.offsetTop;
+    };
+    document.onmouseup = () => dragging=false;
+    document.onmousemove = e => {
+      if(dragging && !fixed) {
+        el.style.left = (e.clientX - offsetX)+"px";
+        el.style.top = (e.clientY - offsetY)+"px";
+        el.style.right = "auto";
+      }
+    };
+  }
+  makeDraggable(gui);
+
 })();
