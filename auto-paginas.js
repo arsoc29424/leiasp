@@ -67,7 +67,7 @@
     <button id="langBtn">${t("lang")}</button>
     <br><br>
     <label>⏱ Intervalo: <span id="intervalLabel">${interval}</span>s</label>
-    <input type="range" id="intervalSlider" min="5" max="120" value="${interval}" style="width:100%;">
+    <input type="range" min="5" max="120" value="30" id="intervalRange" />
     <br><br>
     <div id="status" style="padding:5px; text-align:center; border-radius:8px; font-weight:bold; background:#f2f2f2;">${t("statusStopped")}</div>
   `;
