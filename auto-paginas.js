@@ -180,7 +180,7 @@
         log(lang==="pt"?"Página virada":"Page turned","📖");
         let wait = interval*1000;
         if(randomMode) {
-            const min=15, max=120;
+            const min=60, max=120;
             wait = (Math.floor(Math.random()*(max-min+1))+min)*1000;
         }
         timer = setTimeout(tick,wait);
