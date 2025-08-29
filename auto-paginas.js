@@ -23,7 +23,7 @@
         <div id="status" style="margin-bottom:8px; font-weight:bold; color:#e74c3c;">🔴 OFF</div>
 
         <label style="font-size:14px;">⏱ Tempo (s): <span id="tempoVal">5</span></label><br>
-        <input type="range" id="tempoSlider" min="1" max="30" value="5" style="width:100%; margin:5px 0;">
+        <input type="range" id="tempoSlider" min="1" max="120" value="5" style="width:100%; margin:5px 0;">
 
         <label style="font-size:14px; display:block; margin-top:6px;">
             <input type="checkbox" id="modoAleatorio"> ⤭ Modo Aleatório
