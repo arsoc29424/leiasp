@@ -1,259 +1,262 @@
-(function() {
-  let autoRunning = false;
-  let autoPageInterval;
-  let interval = 30; // default
-  let randomMode = false;
-  let darkMode = false;
-  let fixed = false;
-  let language = "pt"; // padrão
+javascript:(() => {
+  // ========= ESTILOS =========
+  const style = document.createElement("style");
+  style.innerHTML = `
+    #autoPagerGUI {
+      position: fixed;
+      top: 20px;
+      right: 40px;
+      background: var(--bg);
+      color: var(--fg);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      z-index: 999999;
+      width: 260px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      user-select: none;
+      transition: background 0.3s, color 0.3s;
+    }
+    #autoPagerGUI.dark { --bg: #222; --fg: #eee; --border: #555; }
+    #autoPagerGUI.light { --bg: #fff; --fg: #222; --border: #ccc; }
+    #autoPagerGUI h3 { margin: 0 0 10px; font-size: 16px; text-align: center; }
 
-  const translations = {
+    #autoPagerGUI button {
+      background: var(--border);
+      border: none;
+      border-radius: 8px;
+      padding: 6px 10px;
+      margin: 4px;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.3s;
+      color: var(--fg);
+      font-size: 14px;
+    }
+    #autoPagerGUI button:hover { background: #3c82f6; color: white; transform: scale(1.05); }
+    #autoPagerGUI button:active { transform: scale(0.95); }
+
+    #autoPagerGUI label { display:block; margin-top: 8px; font-size: 13px; }
+    #autoPagerGUI input[type=range] { width: 100%; }
+
+    .status-indicator {
+      margin-top: 10px;
+      padding: 4px;
+      border-radius: 6px;
+      text-align: center;
+      font-weight: bold;
+    }
+    .status-on {
+      background: rgba(0,200,0,0.2);
+      color: lime;
+      animation: glowGreen 1s infinite alternate;
+    }
+    .status-off {
+      background: rgba(200,0,0,0.2);
+      color: red;
+      animation: glowRed 1s infinite alternate;
+    }
+    @keyframes glowGreen { from{box-shadow:0 0 5px lime;} to{box-shadow:0 0 15px lime;} }
+    @keyframes glowRed { from{box-shadow:0 0 5px red;} to{box-shadow:0 0 15px red;} }
+
+    #logContainer {
+      position: fixed;
+      bottom: 20px;
+      right: 40px;
+      width: 260px;
+      z-index: 999999;
+    }
+    .logMessage {
+      background: var(--bg);
+      color: var(--fg);
+      border-radius: 8px;
+      padding: 6px 10px;
+      margin-top: 6px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s ease;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .logMessage.show { opacity: 1; transform: translateY(0); }
+    .logMessage.hide { opacity: 0; transform: translateY(-20px); }
+  `;
+  document.head.appendChild(style);
+
+  // ========= VARIÁVEIS =========
+  let interval = 30;
+  let autoRunning = false;
+  let autoPageTimeout = null;
+  let randomMode = false;
+  let fixedGUI = false;
+  let lang = "pt";
+  const dict = {
     pt: {
-      title: "Lean Leia Sp",
-      start: "Iniciar ▶",
-      stop: "Parar ⏸",
-      next: "Virar Agora ⚡",
-      random: "Modo Aleatório",
-      dark: "Dark/Light",
-      lock: "Fixar GUI 🔒",
-      unlock: "Desfixar GUI 🔓",
-      lang: "Idioma 🌐",
-      statusRunning: "Executando...",
-      statusStopped: "Parado."
+      title: "📖 Auto Páginas",
+      start: "▶ Iniciar",
+      stop: "⏸ Parar",
+      next: "⏩ Virar Agora",
+      random: "Modo aleatório",
+      interval: "Intervalo (s):",
+      theme: "🌗 Tema",
+      pin: "📌 Fixar GUI",
+      statusOn: "Executando...",
+      statusOff: "Parado",
+      logStart: "✅ Auto-páginas iniciado",
+      logStop: "⏸ Auto-páginas parado",
+      logTurn: "📖 Página virada"
     },
     en: {
-      title: "Lean Read Sp",
-      start: "Start ▶",
-      stop: "Stop ⏸",
-      next: "Next Now ⚡",
-      random: "Random Mode",
-      dark: "Dark/Light",
-      lock: "Lock GUI 🔒",
-      unlock: "Unlock GUI 🔓",
-      lang: "Language 🌐",
-      statusRunning: "Running...",
-      statusStopped: "Stopped."
+      title: "📖 Auto Pager",
+      start: "▶ Start",
+      stop: "⏸ Stop",
+      next: "⏩ Next Now",
+      random: "Random mode",
+      interval: "Interval (s):",
+      theme: "🌗 Theme",
+      pin: "📌 Pin GUI",
+      statusOn: "Running...",
+      statusOff: "Stopped",
+      logStart: "✅ Auto-pager started",
+      logStop: "⏸ Auto-pager stopped",
+      logTurn: "📖 Page turned"
     }
   };
 
-  function t(key) {
-    return translations[language][key];
-  }
-
-  // ===== GUI =====
+  // ========= GUI =========
   const gui = document.createElement("div");
-  gui.style.position = "fixed";
-  gui.style.top = "20px";
-  gui.style.right = "20px";
-  gui.style.background = "white";
-  gui.style.border = "1px solid #ccc";
-  gui.style.borderRadius = "12px";
-  gui.style.padding = "12px";
-  gui.style.zIndex = 9999;
-  gui.style.width = "210px";
-  gui.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
-  gui.style.fontFamily = "Arial, sans-serif";
-  gui.style.transition = "background 0.3s, color 0.3s";
-
+  gui.id = "autoPagerGUI";
+  gui.className = "light";
   gui.innerHTML = `
-    <h3 style="margin:0 0 10px 0; font-size:16px; text-align:center;">${t("title")}</h3>
-    <button id="startBtn">${t("start")}</button>
-    <button id="stopBtn">${t("stop")}</button>
-    <button id="nextBtn">${t("next")}</button>
-    <br><br>
-    <label>${t("random")} <input type="checkbox" id="randomMode"></label><br>
-    <label>${t("dark")} <input type="checkbox" id="darkMode"></label><br>
-    <button id="lockBtn">${t("lock")}</button>
-    <button id="langBtn">${t("lang")}</button>
-    <br><br>
-    <label>⏱ Intervalo: <span id="intervalLabel">${interval}</span>s</label>
-    <input type="range" min="5" max="120" value="30" id="intervalRange" />
-    <br><br>
-    <div id="status" style="padding:5px; text-align:center; border-radius:8px; font-weight:bold; background:#f2f2f2;">${t("statusStopped")}</div>
+    <h3 id="guiTitle">${dict[lang].title}</h3>
+    <div style="text-align:center;">
+      <button id="startBtn">${dict[lang].start}</button>
+      <button id="stopBtn">${dict[lang].stop}</button>
+      <button id="nextBtn">${dict[lang].next}</button>
+    </div>
+    <label>${dict[lang].interval}
+      <input type="range" min="5" max="120" value="30" id="intervalRange" />
+      <span id="intervalValue">30</span>s
+    </label>
+    <label><input type="checkbox" id="randomChk"> ${dict[lang].random}</label>
+    <div style="margin-top:6px; text-align:center;">
+      <button id="themeBtn">${dict[lang].theme}</button>
+      <button id="pinBtn">${dict[lang].pin}</button>
+      <button id="langBtn">🌐</button>
+    </div>
+    <div id="status" class="status-indicator status-off">${dict[lang].statusOff}</div>
   `;
-
   document.body.appendChild(gui);
 
-  // ===== Botões =====
-  const startBtn = gui.querySelector("#startBtn");
-  const stopBtn = gui.querySelector("#stopBtn");
-  const nextBtn = gui.querySelector("#nextBtn");
-  const randomCheck = gui.querySelector("#randomMode");
-  const darkCheck = gui.querySelector("#darkMode");
-  const lockBtn = gui.querySelector("#lockBtn");
-  const langBtn = gui.querySelector("#langBtn");
-  const slider = gui.querySelector("#intervalSlider");
-  const label = gui.querySelector("#intervalLabel");
-  const status = gui.querySelector("#status");
-
-  // ===== Estilo dos botões =====
-  gui.querySelectorAll("button").forEach(btn => {
-    btn.style.margin = "3px";
-    btn.style.padding = "6px 10px";
-    btn.style.border = "none";
-    btn.style.borderRadius = "8px";
-    btn.style.cursor = "pointer";
-    btn.style.transition = "all 0.3s";
-    btn.onmouseover = () => btn.style.background = "#ddd";
-    btn.onmouseout = () => btn.style.background = "";
-  });
-
-  // ===== Logs =====
+  // ========= LOG CONTAINER =========
   const logContainer = document.createElement("div");
-  logContainer.style.position = "fixed";
-  logContainer.style.bottom = "20px";
-  logContainer.style.right = "20px";
-  logContainer.style.display = "flex";
-  logContainer.style.flexDirection = "column-reverse";
-  logContainer.style.gap = "6px";
-  logContainer.style.zIndex = 9999;
+  logContainer.id = "logContainer";
   document.body.appendChild(logContainer);
 
-  function logMessage(msg, type="info") {
+  function addLog(msg) {
     const log = document.createElement("div");
-    log.textContent = msg;
-    log.style.padding = "8px 12px";
-    log.style.borderRadius = "8px";
-    log.style.background = "#406a76";
-    log.style.color = "white";
-    log.style.fontSize = "14px";
-    log.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
-    log.style.opacity = "0";
-    log.style.transform = "translateY(20px)";
-    log.style.transition = "all 0.5s";
-
-    if(type==="start") log.textContent = "✅ " + msg;
-    if(type==="stop") log.textContent = "⏸ " + msg;
-    if(type==="page") log.textContent = "📖 " + msg;
-
+    log.className = "logMessage";
+    log.innerHTML = msg;
     logContainer.appendChild(log);
-
-    requestAnimationFrame(() => {
-      log.style.opacity = "1";
-      log.style.transform = "translateY(0)";
-    });
-
+    setTimeout(() => log.classList.add("show"), 50);
     setTimeout(() => {
-      log.style.opacity = "0";
-      log.style.transform = "translateY(20px)";
+      log.classList.remove("show");
+      log.classList.add("hide");
       setTimeout(() => log.remove(), 500);
     }, 5000);
   }
 
-  // ===== Botão de virar página =====
+  // ========= FUNÇÕES =========
   function clickNextButton() {
-    const buttons = document.querySelectorAll("button.sc-lkltAP.joPNDs");
-    if (buttons.length > 1) {
-      buttons[1].click(); // botão da direita
-      logMessage(language==="pt" ? "Página virada" : "Page turned", "page");
+    const btns = document.querySelectorAll("button.sc-lkltAP");
+    if (btns.length > 1) {
+      btns[1].click();
+      addLog(dict[lang].logTurn);
     }
   }
 
-  // ===== Funções =====
   function scheduleNextPage() {
-    clearTimeout(autoPageInterval);
+    clearTimeout(autoPageTimeout);
+    if (!autoRunning) return;
 
-    if (autoRunning) {
-      let delay;
-      if (randomMode) {
-        delay = Math.floor(Math.random() * (120 - 15 + 1) + 15) * 1000;
-      } else {
-        delay = interval * 1000;
-      }
-
-      autoPageInterval = setTimeout(() => {
-        clickNextButton();
-        scheduleNextPage();
-      }, delay);
-    }
-  }
-
-  function updateStatus() {
-    if(autoRunning){
-      status.textContent = t("statusRunning");
-      status.style.background = "#28a745";
-      status.style.color = "white";
-      status.style.boxShadow = "0 0 8px #28a745";
+    let delay;
+    if (randomMode) {
+      delay = Math.floor(Math.random() * (120 - 15 + 1) + 15) * 1000;
     } else {
-      status.textContent = t("statusStopped");
-      status.style.background = "#f2f2f2";
-      status.style.color = "#333";
-      status.style.boxShadow = "0 0 0";
+      delay = interval * 1000;
+    }
+
+    autoPageTimeout = setTimeout(() => {
+      clickNextButton();
+      scheduleNextPage();
+    }, delay);
+  }
+
+  function startAuto() {
+    if (!autoRunning) {
+      autoRunning = true;
+      document.getElementById("status").className = "status-indicator status-on";
+      document.getElementById("status").textContent = dict[lang].statusOn;
+      scheduleNextPage();
+      addLog(dict[lang].logStart);
     }
   }
 
-  // ===== Event Listeners =====
-  startBtn.onclick = () => {
-    autoRunning = true;
-    logMessage(language==="pt" ? "Auto iniciado" : "Auto started","start");
-    updateStatus();
-    scheduleNextPage();
-  };
-
-  stopBtn.onclick = () => {
+  function stopAuto() {
     autoRunning = false;
-    clearTimeout(autoPageInterval);
-    logMessage(language==="pt" ? "Auto parado" : "Auto stopped","stop");
-    updateStatus();
+    clearTimeout(autoPageTimeout);
+    document.getElementById("status").className = "status-indicator status-off";
+    document.getElementById("status").textContent = dict[lang].statusOff;
+    addLog(dict[lang].logStop);
+  }
+
+  // ========= EVENTOS =========
+  document.getElementById("startBtn").onclick = startAuto;
+  document.getElementById("stopBtn").onclick = stopAuto;
+  document.getElementById("nextBtn").onclick = clickNextButton;
+
+  document.getElementById("intervalRange").oninput = e => {
+    interval = +e.target.value;
+    document.getElementById("intervalValue").textContent = interval;
+  };
+  document.getElementById("randomChk").onchange = e => randomMode = e.target.checked;
+
+  document.getElementById("themeBtn").onclick = () => {
+    gui.classList.toggle("dark");
+    gui.classList.toggle("light");
   };
 
-  nextBtn.onclick = () => {
-    clickNextButton();
+  document.getElementById("pinBtn").onclick = () => {
+    fixedGUI = !fixedGUI;
+    gui.style.cursor = fixedGUI ? "default" : "move";
   };
 
-  randomCheck.onchange = e => randomMode = e.target.checked;
-  darkCheck.onchange = e => {
-    darkMode = e.target.checked;
-    gui.style.background = darkMode ? "#1e1e1e" : "white";
-    gui.style.color = darkMode ? "white" : "black";
+  document.getElementById("langBtn").onclick = () => {
+    lang = lang === "pt" ? "en" : "pt";
+    gui.remove();
+    logContainer.remove();
+    style.remove();
+    eval("(" + arguments.callee.toString() + ")()"); // reinicia script com nova lingua
   };
 
-  slider.oninput = e => {
-    interval = parseInt(e.target.value);
-    label.textContent = interval;
+  // ========= DRAGGABLE =========
+  let isDragging = false, offsetX, offsetY;
+  gui.onmousedown = e => {
+    if (fixedGUI) return;
+    isDragging = true;
+    offsetX = e.clientX - gui.offsetLeft;
+    offsetY = e.clientY - gui.offsetTop;
   };
-
-  langBtn.onclick = () => {
-    language = language === "pt" ? "en" : "pt";
-    gui.querySelector("h3").textContent = t("title");
-    startBtn.textContent = t("start");
-    stopBtn.textContent = t("stop");
-    nextBtn.textContent = t("next");
-    randomCheck.parentNode.firstChild.textContent = t("random")+" ";
-    darkCheck.parentNode.firstChild.textContent = t("dark")+" ";
-    lockBtn.textContent = fixed ? t("unlock") : t("lock");
-    langBtn.textContent = t("lang");
-    updateStatus();
-  };
-
-  lockBtn.onclick = () => {
-    fixed = !fixed;
-    lockBtn.textContent = fixed ? t("unlock") : t("lock");
-    if(fixed) {
-      gui.onmousedown = null;
-    } else {
-      makeDraggable(gui);
+  document.onmousemove = e => {
+    if (isDragging && !fixedGUI) {
+      gui.style.left = e.clientX - offsetX + "px";
+      gui.style.top = e.clientY - offsetY + "px";
+      gui.style.right = "auto";
     }
   };
-
-  // ===== Drag =====
-  function makeDraggable(el) {
-    let offsetX, offsetY, dragging = false;
-    el.onmousedown = e => {
-      if(fixed) return;
-      dragging = true;
-      offsetX = e.clientX - el.offsetLeft;
-      offsetY = e.clientY - el.offsetTop;
-    };
-    document.onmouseup = () => dragging=false;
-    document.onmousemove = e => {
-      if(dragging && !fixed) {
-        el.style.left = (e.clientX - offsetX)+"px";
-        el.style.top = (e.clientY - offsetY)+"px";
-        el.style.right = "auto";
-      }
-    };
-  }
-  makeDraggable(gui);
+  document.onmouseup = () => isDragging = false;
 
 })();
