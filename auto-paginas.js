@@ -31,7 +31,7 @@
     logContainer.style.left = "50%";
     logContainer.style.transform = "translateX(-50%)";
     logContainer.style.display = "flex";
-    logContainer.style.flexDirection = "column-reverse"; // o mais novo vai pra baixo
+    logContainer.style.flexDirection = "column"; // novos embaixo
     logContainer.style.alignItems = "center";
     logContainer.style.gap = "8px";
     logContainer.style.zIndex = "999999";
@@ -48,14 +48,22 @@
         log.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)";
         log.style.fontSize = "14px";
         log.style.opacity = "0";
-        log.style.transition = "opacity 0.3s ease";
+        log.style.transform = "translateY(20px)";
+        log.style.transition = "opacity 0.4s ease, transform 0.4s ease";
 
         logContainer.appendChild(log);
-        requestAnimationFrame(() => (log.style.opacity = "1"));
 
+        // Animação de entrada (sobe e aparece)
+        requestAnimationFrame(() => {
+            log.style.opacity = "1";
+            log.style.transform = "translateY(0)";
+        });
+
+        // Remoção após 5s
         setTimeout(() => {
             log.style.opacity = "0";
-            setTimeout(() => log.remove(), 300);
+            log.style.transform = "translateY(-20px)";
+            setTimeout(() => log.remove(), 400);
         }, 5000);
     }
 
