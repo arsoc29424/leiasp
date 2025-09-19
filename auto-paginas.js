@@ -80,18 +80,37 @@
     #lean-gui input[type=range] {
         width: 100%;
     }
-    #lean-gui label { font-size:13px; }
+    #lean-gui input[type=number] {
+        width: 45%;
+        margin: 2px 2px 8px 0;
+        padding: 4px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+    }
+    #lean-gui label { font-size:13px; display:block; margin-top:6px; }
 
+    #lean-toggle {
+        position:absolute;
+        top:5px;
+        right:5px;
+        cursor:pointer;
+        font-weight:bold;
+        font-size:18px;
+        user-select:none;
+    }
     `;
     document.head.appendChild(style);
 
     // ======== VARIÁVEIS =========
     let interval = 30;
+    let minInterval = 60;
+    let maxInterval = 120;
     let timer = null;
     let running = false;
     let darkMode = false;
     let fixed = false;
     let randomMode = false;
+    let guiMinimized = false;
     let lang = "pt";
     const langs = {
         pt: {
@@ -106,7 +125,9 @@
             light:"☀ Tema Claro",
             lang:"🌐 English",
             statusOn:"Executando...",
-            statusOff:"Parado"
+            statusOff:"Parado",
+            minSecs:"Mín Seg",
+            maxSecs:"Máx Seg"
         },
         en: {
             title:"Lean Read Sp",
@@ -120,7 +141,9 @@
             light:"☀ Light Theme",
             lang:"🌐 Português",
             statusOn:"Running...",
-            statusOff:"Stopped"
+            statusOff:"Stopped",
+            minSecs:"Min Secs",
+            maxSecs:"Max Secs"
         }
     };
 
@@ -128,10 +151,13 @@
     const gui = document.createElement("div");
     gui.id = "lean-gui";
     gui.innerHTML = `
+        <div id="lean-toggle">⬆</div>
         <h3 id="lean-title">${langs[lang].title}</h3>
         <div id="lean-status" class="off">${langs[lang].statusOff}</div>
         <label>${lang==="pt"?"⏱ Intervalo (segundos)":"⏱ Interval (seconds)"}: <span id="lean-val">${interval}</span></label>
         <input type="range" min="5" max="120" value="${interval}" id="intervalRange" />
+        <label>${langs[lang].minSecs}: <input type="number" id="minRange" value="${minInterval}" min="1" max="600"></label>
+        <label>${langs[lang].maxSecs}: <input type="number" id="maxRange" value="${maxInterval}" min="1" max="600"></label>
         <button id="lean-start">${langs[lang].start}</button>
         <button id="lean-stop">${langs[lang].stop}</button>
         <button id="lean-now">${langs[lang].now}</button>
@@ -180,7 +206,8 @@
         log(lang==="pt"?"Página virada":"Page turned","📖");
         let wait = interval*1000;
         if(randomMode) {
-            const min=60, max=120;
+            const min = parseInt(document.getElementById("minRange").value) || minInterval;
+            const max = parseInt(document.getElementById("maxRange").value) || maxInterval;
             wait = (Math.floor(Math.random()*(max-min+1))+min)*1000;
         }
         timer = setTimeout(tick,wait);
@@ -195,6 +222,14 @@
     document.getElementById("intervalRange").addEventListener("input",e=>{
         interval = parseInt(e.target.value);
         document.getElementById("lean-val").textContent = interval;
+    });
+
+    document.getElementById("minRange").addEventListener("input",e=>{
+        minInterval = parseInt(e.target.value);
+    });
+
+    document.getElementById("maxRange").addEventListener("input",e=>{
+        maxInterval = parseInt(e.target.value);
     });
 
     document.getElementById("lean-start").onclick = start;
@@ -231,17 +266,27 @@
         refreshLang();
     };
 
+    document.getElementById("lean-toggle").onclick = ()=>{
+        guiMinimized = !guiMinimized;
+        Array.from(gui.children).forEach(el=>{
+            if(el.id!=="lean-toggle") el.style.display = guiMinimized ? "none" : "";
+        });
+        document.getElementById("lean-toggle").textContent = guiMinimized ? "⬇" : "⬆";
+    };
+
     function refreshLang(){
         document.getElementById("lean-title").textContent=langs[lang].title;
         document.getElementById("lean-start").textContent=langs[lang].start;
         document.getElementById("lean-stop").textContent=langs[lang].stop;
         document.getElementById("lean-now").textContent=langs[lang].now;
-        document.querySelector("label[for]").textContent=lang==="pt"?"⏱ Intervalo (segundos)":"⏱ Interval (seconds)";
+        document.querySelector("label[for=intervalRange]").textContent=lang==="pt"?"⏱ Intervalo (segundos)":"⏱ Interval (seconds)";
         document.getElementById("lean-random").nextSibling.textContent=" "+langs[lang].random;
         document.getElementById("lean-lock").textContent=fixed?langs[lang].unlock:langs[lang].lock;
         document.getElementById("lean-theme").textContent=darkMode?langs[lang].light:langs[lang].theme;
         document.getElementById("lean-lang").textContent=langs[lang].lang;
         document.getElementById("lean-status").textContent=running?langs[lang].statusOn:langs[lang].statusOff;
+        document.getElementById("lean-min-label").textContent=langs[lang].minSecs;
+        document.getElementById("lean-max-label").textContent=langs[lang].maxSecs;
     }
 
     // ======== DRAG =========
