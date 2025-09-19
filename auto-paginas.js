@@ -15,7 +15,7 @@
         position: fixed;
         top: 50px;
         right: 50px;
-        width: 240px;
+        width: 260px;
         background: #fff;
         border-radius: 15px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.3);
@@ -29,17 +29,37 @@
 
     #lean-gui h3 { margin: 0 0 10px; font-size: 16px; text-align:center; }
 
-    #lean-gui button {
+    #lean-tabs {
+        display: flex;
+        margin-bottom: 8px;
+    }
+    #lean-tabs button {
+        flex: 1;
+        border: none;
+        background: #ddd;
+        padding: 6px;
+        cursor: pointer;
+        border-radius: 10px 10px 0 0;
+    }
+    #lean-tabs button.active {
+        background: #666;
+        color: #fff;
+    }
+    #lean-gui.dark #lean-tabs button { background:#222; color:#ccc; }
+    #lean-gui.dark #lean-tabs button.active { background:#444; color:#fff; }
+
+    .lean-tab-content { display:none; }
+    .lean-tab-content.active { display:block; }
+
+    #lean-gui button.action {
         margin: 4px 0;
         padding: 6px 10px;
         width: 100%;
         border: none;
         border-radius: 10px;
         cursor: pointer;
-        transition: background 0.3s;
         font-size: 14px;
     }
-    #lean-gui button:hover { filter: brightness(1.2); }
 
     #lean-status {
         text-align:center;
@@ -51,10 +71,7 @@
 
     #lean-timer { text-align:center; font-size:13px; margin-bottom:8px; }
 
-    @keyframes pulse {
-        0%,100% { opacity:1; }
-        50% { opacity:0.5; }
-    }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
 
     #lean-logs {
         position: fixed;
@@ -78,20 +95,11 @@
         transform: translateY(20px);
         animation: slideUp 0.4s forwards;
     }
-    @keyframes slideUp {
-        to { opacity:1; transform: translateY(0); }
-    }
-    .lean-log.hide {
-        animation: slideDown 0.4s forwards;
-    }
-    @keyframes slideDown {
-        to { opacity:0; transform: translateY(20px); }
-    }
+    @keyframes slideUp { to { opacity:1; transform: translateY(0); } }
+    .lean-log.hide { animation: slideDown 0.4s forwards; }
+    @keyframes slideDown { to { opacity:0; transform: translateY(20px); } }
 
-    #lean-gui input[type=range], #lean-gui input[type=number] {
-        width: 100%;
-        margin-top:4px;
-    }
+    #lean-gui input[type=range], #lean-gui input[type=number] { width: 100%; margin-top:4px; }
     #lean-gui label { font-size:13px; display:block; margin-top:6px; }
 
     #lean-stealth-btn {
@@ -128,14 +136,17 @@
     let stealth = false;
     let lang = "pt";
     let pages = 0;
+    let activeTab = "main";
 
     const langs = {
         pt: {
             title: "Lean Leia Sp",
+            tabMain: "📖 Principal",
+            tabConfig: "⚙️ Config",
             start: "▶ Iniciar",
             stop: "⏸ Parar",
             now: "⏭ Virar Agora",
-            random: "Modo Aleatório Avançado",
+            random: "Modo Aleatório (usa min/máx)",
             lock: "🔒 Fixar GUI",
             unlock: "🔓 Soltar GUI",
             theme: "🌙 Tema Escuro",
@@ -151,10 +162,12 @@
         },
         en: {
             title: "Lean Read Sp",
+            tabMain: "📖 Main",
+            tabConfig: "⚙️ Config",
             start: "▶ Start",
             stop: "⏸ Stop",
             now: "⏭ Turn Now",
-            random: "Advanced Random Mode",
+            random: "Random Mode (uses min/max)",
             lock: "🔒 Lock GUI",
             unlock: "🔓 Unlock GUI",
             theme: "🌙 Dark Theme",
@@ -175,25 +188,33 @@
     gui.id = "lean-gui";
     gui.innerHTML = `
         <h3 data-i18n="title">${langs[lang].title}</h3>
-        <div id="lean-status" class="off" data-i18n="statusOff">${langs[lang].statusOff}</div>
-        <div id="lean-timer">--s</div>
-        <label><span data-i18n="interval">${langs[lang].interval}</span>: <span id="lean-val">${interval}</span></label>
-        <input type="range" min="${config.rangeMin}" max="${config.rangeMax}" value="${interval}" id="intervalRange" />
-        <label><input type="checkbox" id="lean-random"> <span data-i18n="random">${langs[lang].random}</span></label>
-        <label><span data-i18n="randomMin">${langs[lang].randomMin}</span>:
-            <input type="number" id="lean-min" value="${randomMin}" min="5" max="600">
-        </label>
-        <label><span data-i18n="randomMax">${langs[lang].randomMax}</span>:
-            <input type="number" id="lean-max" value="${randomMax}" min="5" max="600">
-        </label>
-        <button id="lean-start" data-i18n="start">${langs[lang].start}</button>
-        <button id="lean-stop" data-i18n="stop">${langs[lang].stop}</button>
-        <button id="lean-now" data-i18n="now">${langs[lang].now}</button>
-        <div><span data-i18n="pages">${langs[lang].pages}</span>: <span id="lean-pages">0</span></div>
-        <button id="lean-lock" data-i18n="lock">${langs[lang].lock}</button>
-        <button id="lean-theme" data-i18n="theme">${langs[lang].theme}</button>
-        <button id="lean-lang" data-i18n="lang">${langs[lang].lang}</button>
-        <button id="lean-stealth" data-i18n="stealth">${langs[lang].stealth}</button>
+        <div id="lean-tabs">
+            <button id="tab-main" data-i18n="tabMain">${langs[lang].tabMain}</button>
+            <button id="tab-config" data-i18n="tabConfig">${langs[lang].tabConfig}</button>
+        </div>
+        <div id="tab-content-main" class="lean-tab-content">
+            <div id="lean-status" class="off" data-i18n="statusOff">${langs[lang].statusOff}</div>
+            <div id="lean-timer">--s</div>
+            <label><span data-i18n="interval">${langs[lang].interval}</span>: <span id="lean-val">${interval}</span></label>
+            <input type="range" min="${config.rangeMin}" max="${config.rangeMax}" value="${interval}" id="intervalRange" />
+            <label><input type="checkbox" id="lean-random"> <span data-i18n="random">${langs[lang].random}</span></label>
+            <label><span data-i18n="randomMin">${langs[lang].randomMin}</span>:
+                <input type="number" id="lean-min" value="${randomMin}" min="5" max="600">
+            </label>
+            <label><span data-i18n="randomMax">${langs[lang].randomMax}</span>:
+                <input type="number" id="lean-max" value="${randomMax}" min="5" max="600">
+            </label>
+            <button class="action" id="lean-start" data-i18n="start">${langs[lang].start}</button>
+            <button class="action" id="lean-stop" data-i18n="stop">${langs[lang].stop}</button>
+            <button class="action" id="lean-now" data-i18n="now">${langs[lang].now}</button>
+            <div><span data-i18n="pages">${langs[lang].pages}</span>: <span id="lean-pages">0</span></div>
+            <button class="action" id="lean-stealth" data-i18n="stealth">${langs[lang].stealth}</button>
+        </div>
+        <div id="tab-content-config" class="lean-tab-content">
+            <button class="action" id="lean-lock" data-i18n="lock">${langs[lang].lock}</button>
+            <button class="action" id="lean-theme" data-i18n="theme">${langs[lang].theme}</button>
+            <button class="action" id="lean-lang" data-i18n="lang">${langs[lang].lang}</button>
+        </div>
     `;
     document.body.appendChild(gui);
 
@@ -201,7 +222,6 @@
     logBox.id = "lean-logs";
     document.body.appendChild(logBox);
 
-    // botão stealth
     const stealthBtn = document.createElement("div");
     stealthBtn.id = "lean-stealth-btn";
     stealthBtn.textContent = "⚡";
@@ -211,9 +231,8 @@
     // ======== FUNÇÕES =========
     function saveConfig() {
         localStorage.setItem("leanConfig", JSON.stringify({
-            interval, randomMin, randomMax, darkMode, lang, fixed, randomMode, stealth,
-            pos: { left: gui.style.left, top: gui.style.top, right: gui.style.right },
-            pages
+            interval, randomMin, randomMax, darkMode, lang, fixed, randomMode, stealth, activeTab, pages,
+            pos: { left: gui.style.left, top: gui.style.top, right: gui.style.right }
         }));
     }
 
@@ -230,6 +249,7 @@
             fixed = cfg.fixed ?? fixed;
             randomMode = cfg.randomMode ?? randomMode;
             stealth = cfg.stealth ?? stealth;
+            activeTab = cfg.activeTab ?? activeTab;
             pages = cfg.pages ?? 0;
 
             document.getElementById("intervalRange").value = interval;
@@ -246,6 +266,7 @@
                 gui.style.right = cfg.pos.right;
             }
             refreshLang();
+            switchTab(activeTab);
         } catch { }
     }
 
@@ -334,6 +355,15 @@
         saveConfig();
     }
 
+    function switchTab(tab) {
+        activeTab = tab;
+        document.querySelectorAll("#lean-tabs button").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".lean-tab-content").forEach(c => c.classList.remove("active"));
+        document.getElementById("tab-" + tab).classList.add("active");
+        document.getElementById("tab-content-" + tab).classList.add("active");
+        saveConfig();
+    }
+
     // ======== EVENTOS =========
     document.getElementById("intervalRange").addEventListener("input", e => {
         interval = parseInt(e.target.value);
@@ -388,6 +418,9 @@
     document.getElementById("lean-stealth").onclick = () => toggleStealth();
     stealthBtn.onclick = () => toggleStealth(false);
 
+    document.getElementById("tab-main").onclick = () => switchTab("main");
+    document.getElementById("tab-config").onclick = () => switchTab("config");
+
     // ======== DRAG =========
     let offsetX, offsetY, dragging = false;
     gui.onmousedown = e => {
@@ -396,20 +429,15 @@
         offsetX = e.clientX - gui.getBoundingClientRect().left;
         offsetY = e.clientY - gui.getBoundingClientRect().top;
     };
-    document.onmousemove = ev => {
-        if (!dragging) return;
-        requestAnimationFrame(() => {
-            gui.style.left = (ev.clientX - offsetX) + "px";
-            gui.style.top = (ev.clientY - offsetY) + "px";
+    window.onmousemove = e => {
+        if (dragging) {
+            gui.style.left = (e.clientX - offsetX) + "px";
+            gui.style.top = (e.clientY - offsetY) + "px";
             gui.style.right = "auto";
-        });
+        }
     };
-    document.onmouseup = () => {
-        if (dragging) saveConfig();
-        dragging = false;
-    };
+    window.onmouseup = () => { if (dragging) { dragging = false; saveConfig(); } };
 
     // ======== INIT =========
     loadConfig();
-
 })();
