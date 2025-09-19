@@ -337,9 +337,15 @@
     }
 
     function clickPage() {
-        const nextBtn = document.querySelector("button.sc-lkltAP[aria-label='Próxima página'], button.sc-lkltAP:nth-of-type(2)");
-        if (nextBtn) nextBtn.click();
+        // Seleciona o botão que tem **ambas as classes** sc-lkltAP e joPNDs
+        const nextBtn = document.querySelector("button.sc-lkltAP.joPNDs");
+        if (nextBtn) {
+            nextBtn.click();
+        } else {
+            console.warn("Botão de próxima página não encontrado!");
+        }
     }
+
 
     function refreshLang() {
         document.querySelectorAll("[data-i18n]").forEach(el => {
