@@ -1,4 +1,8 @@
 (function () {
+
+
+    localStorage.removeItem("leanConfig"); // limpa tudo que o script tinha salvo
+    let pages = 0; // reseta páginas lidas
     // ======== CONFIG =========
     const config = {
         defaultInterval: 30,
