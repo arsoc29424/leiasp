@@ -17,134 +17,40 @@
         transition: background 0.3s, color 0.3s;
     }
     #lean-gui.dark { background:#111; color:#fff; }
-
     #lean-gui h3 { margin: 0 0 10px; font-size: 16px; text-align:center; }
-
-    #lean-gui button {
-        margin: 4px 0;
-        padding: 6px 10px;
-        width: 100%;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-        transition: background 0.3s;
-        font-size: 14px;
-    }
+    #lean-gui button { margin: 4px 0; padding: 6px 10px; width: 100%; border: none; border-radius: 10px; cursor: pointer; transition: background 0.3s; font-size: 14px; }
     #lean-gui button:hover { filter: brightness(1.2); }
-
-    #lean-status {
-        text-align:center;
-        margin: 8px 0;
-        font-weight:bold;
-    }
+    #lean-status { text-align:center; margin: 8px 0; font-weight:bold; }
     #lean-status.on { color:lime; text-shadow:0 0 8px lime; animation: pulse 1.2s infinite; }
     #lean-status.off { color:red; text-shadow:0 0 8px red; }
-
-    @keyframes pulse {
-        0%,100% { opacity:1; }
-        50% { opacity:0.5; }
-    }
-
-    #lean-logs {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 300px;
-        z-index: 999999;
-    }
-    .lean-log {
-        background: rgba(0,0,0,0.8);
-        color: #fff;
-        margin-top: 6px;
-        padding: 8px 12px;
-        border-radius: 12px;
-        font-size: 13px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        opacity: 0;
-        transform: translateY(20px);
-        animation: slideUp 0.4s forwards;
-    }
-    @keyframes slideUp {
-        to { opacity:1; transform: translateY(0); }
-    }
-    .lean-log.hide {
-        animation: slideDown 0.4s forwards;
-    }
-    @keyframes slideDown {
-        to { opacity:0; transform: translateY(20px); }
-    }
-
-    #lean-gui input[type=range] {
-        width: 100%;
-    }
-    #lean-gui input[type=number] {
-        width: 45%;
-        margin: 2px 2px 8px 0;
-        padding: 4px;
-        border-radius: 8px;
-        border: 1px solid #ccc;
-    }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+    #lean-logs { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 999999; }
+    .lean-log { background: rgba(0,0,0,0.8); color: #fff; margin-top: 6px; padding: 8px 12px; border-radius: 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; opacity: 0; transform: translateY(20px); animation: slideUp 0.4s forwards; }
+    @keyframes slideUp { to { opacity:1; transform: translateY(0); } }
+    .lean-log.hide { animation: slideDown 0.4s forwards; }
+    @keyframes slideDown { to { opacity:0; transform: translateY(20px); } }
+    #lean-gui input[type=range], #lean-gui input[type=number] { width: 100%; margin: 4px 0; padding: 4px; border-radius: 8px; border: 1px solid #ccc; }
     #lean-gui label { font-size:13px; display:block; margin-top:6px; }
-
-    #lean-toggle {
-        position:absolute;
-        top:5px;
-        right:5px;
-        cursor:pointer;
-        font-weight:bold;
-        font-size:18px;
-        user-select:none;
-    }
+    #lean-toggle { position:absolute; top:5px; right:5px; cursor:pointer; font-weight:bold; font-size:18px; user-select:none; }
     `;
     document.head.appendChild(style);
 
     // ======== VARIÁVEIS =========
     let interval = 30;
-    let minInterval = 60;
-    let maxInterval = 120;
+    let minInterval = 10;
+    let maxInterval = 60;
     let timer = null;
     let running = false;
     let darkMode = false;
     let fixed = false;
     let randomMode = false;
     let guiMinimized = false;
+    let pagesTurned = 0;
     let lang = "pt";
+
     const langs = {
-        pt: {
-            title:"Lean Leia Sp",
-            start:"▶ Iniciar",
-            stop:"⏸ Parar",
-            now:"⏭ Virar Agora",
-            random:"Modo Aleatório",
-            lock:"🔒 Fixar GUI",
-            unlock:"🔓 Soltar GUI",
-            theme:"🌙 Tema Escuro",
-            light:"☀ Tema Claro",
-            lang:"🌐 English",
-            statusOn:"Executando...",
-            statusOff:"Parado",
-            minSecs:"Mín Seg",
-            maxSecs:"Máx Seg"
-        },
-        en: {
-            title:"Lean Read Sp",
-            start:"▶ Start",
-            stop:"⏸ Stop",
-            now:"⏭ Turn Now",
-            random:"Random Mode",
-            lock:"🔒 Lock GUI",
-            unlock:"🔓 Unlock GUI",
-            theme:"🌙 Dark Theme",
-            light:"☀ Light Theme",
-            lang:"🌐 Português",
-            statusOn:"Running...",
-            statusOff:"Stopped",
-            minSecs:"Min Secs",
-            maxSecs:"Max Secs"
-        }
+        pt: { title:"Lean Leia Sp", start:"▶ Iniciar", stop:"⏸ Parar", now:"⏭ Virar Agora", random:"Modo Aleatório", lock:"🔒 Fixar GUI", unlock:"🔓 Soltar GUI", theme:"🌙 Tema Escuro", light:"☀ Tema Claro", lang:"🌐 English", statusOn:"Executando...", statusOff:"Parado", minSecs:"Mín Seg", maxSecs:"Máx Seg" },
+        en: { title:"Lean Read Sp", start:"▶ Start", stop:"⏸ Stop", now:"⏭ Turn Now", random:"Random Mode", lock:"🔒 Lock GUI", unlock:"🔓 Unlock GUI", theme:"🌙 Dark Theme", light:"☀ Light Theme", lang:"🌐 Português", statusOn:"Running...", statusOff:"Stopped", minSecs:"Min Secs", maxSecs:"Max Secs" }
     };
 
     // ======== GUI =========
@@ -162,6 +68,7 @@
         <button id="lean-stop">${langs[lang].stop}</button>
         <button id="lean-now">${langs[lang].now}</button>
         <label><input type="checkbox" id="lean-random"> ${langs[lang].random}</label>
+        <div>Páginas viradas: <span id="pages-count">0</span></div>
         <button id="lean-lock">${langs[lang].lock}</button>
         <button id="lean-theme">${langs[lang].theme}</button>
         <button id="lean-lang">${langs[lang].lang}</button>
@@ -186,8 +93,10 @@
     function start() {
         if(running) return;
         running = true;
+        pagesTurned = 0;
         document.getElementById("lean-status").textContent = langs[lang].statusOn;
         document.getElementById("lean-status").className = "on";
+        document.getElementById("pages-count").textContent = pagesTurned;
         tick();
         log(langs[lang].statusOn,"✅");
     }
@@ -202,15 +111,20 @@
 
     function tick() {
         if(!running) return;
+
         clickPage();
+        pagesTurned++;
+        document.getElementById("pages-count").textContent = pagesTurned;
         log(lang==="pt"?"Página virada":"Page turned","📖");
-        let wait = interval*1000;
+
+        let wait = interval * 1000;
         if(randomMode) {
             const min = parseInt(document.getElementById("minRange").value) || minInterval;
             const max = parseInt(document.getElementById("maxRange").value) || maxInterval;
-            wait = (Math.floor(Math.random()*(max-min+1))+min)*1000;
+            wait = (Math.floor(Math.random() * (max - min + 1)) + min) * 1000;
         }
-        timer = setTimeout(tick,wait);
+
+        timer = setTimeout(tick, wait);
     }
 
     function clickPage() {
@@ -219,74 +133,36 @@
     }
 
     // ======== EVENTOS =========
-    document.getElementById("intervalRange").addEventListener("input",e=>{
+    document.getElementById("intervalRange").addEventListener("input", e=>{
         interval = parseInt(e.target.value);
         document.getElementById("lean-val").textContent = interval;
     });
-
-    document.getElementById("minRange").addEventListener("input",e=>{
-        minInterval = parseInt(e.target.value);
-    });
-
-    document.getElementById("maxRange").addEventListener("input",e=>{
-        maxInterval = parseInt(e.target.value);
-    });
+    document.getElementById("minRange").addEventListener("input", e=>{ minInterval = parseInt(e.target.value); });
+    document.getElementById("maxRange").addEventListener("input", e=>{ maxInterval = parseInt(e.target.value); });
 
     document.getElementById("lean-start").onclick = start;
     document.getElementById("lean-stop").onclick = stop;
-    document.getElementById("lean-now").onclick = ()=>{ clickPage(); log(lang==="pt"?"Página virada manualmente":"Page turned manually","📖"); };
-
-    document.getElementById("lean-random").onchange = e=>{
-        randomMode = e.target.checked;
-    };
-
-    document.getElementById("lean-lock").onclick = e=>{
-        fixed = !fixed;
-        gui.style.cursor = fixed?"default":"move";
-        e.target.textContent = fixed?langs[lang].unlock:langs[lang].lock;
-    };
-
-    document.getElementById("lean-theme").onclick = e=>{
-        darkMode = !darkMode;
-        if(darkMode) {
-            gui.classList.add("dark");
-            document.body.style.background="#000";
-            document.body.style.color="#fff";
-            e.target.textContent = langs[lang].light;
-        } else {
-            gui.classList.remove("dark");
-            document.body.style.background="#fff";
-            document.body.style.color="#000";
-            e.target.textContent = langs[lang].theme;
-        }
-    };
-
-    document.getElementById("lean-lang").onclick = e=>{
-        lang = lang==="pt"?"en":"pt";
-        refreshLang();
-    };
+    document.getElementById("lean-now").onclick = ()=>{ clickPage(); pagesTurned++; document.getElementById("pages-count").textContent = pagesTurned; log(lang==="pt"?"Página virada manualmente":"Page turned manually","📖"); };
+    document.getElementById("lean-random").onchange = e=>{ randomMode = e.target.checked; };
+    document.getElementById("lean-lock").onclick = e=>{ fixed = !fixed; gui.style.cursor = fixed?"default":"move"; e.target.textContent=fixed?langs[lang].unlock:langs[lang].lock; };
+    document.getElementById("lean-theme").onclick = e=>{ darkMode = !darkMode; if(darkMode){ gui.classList.add("dark"); document.body.style.background="#000"; document.body.style.color="#fff"; e.target.textContent = langs[lang].light; } else { gui.classList.remove("dark"); document.body.style.background="#fff"; document.body.style.color="#000"; e.target.textContent = langs[lang].theme; }};
+    document.getElementById("lean-lang").onclick = e=>{ lang = lang==="pt"?"en":"pt"; refreshLang(); };
 
     document.getElementById("lean-toggle").onclick = ()=>{
         guiMinimized = !guiMinimized;
-        Array.from(gui.children).forEach(el=>{
-            if(el.id!=="lean-toggle") el.style.display = guiMinimized ? "none" : "";
-        });
+        Array.from(gui.children).forEach(el=>{ if(el.id!=="lean-toggle") el.style.display = guiMinimized ? "none" : ""; });
         document.getElementById("lean-toggle").textContent = guiMinimized ? "⬇" : "⬆";
     };
 
     function refreshLang(){
-        document.getElementById("lean-title").textContent=langs[lang].title;
-        document.getElementById("lean-start").textContent=langs[lang].start;
-        document.getElementById("lean-stop").textContent=langs[lang].stop;
-        document.getElementById("lean-now").textContent=langs[lang].now;
-        document.querySelector("label[for=intervalRange]").textContent=lang==="pt"?"⏱ Intervalo (segundos)":"⏱ Interval (seconds)";
-        document.getElementById("lean-random").nextSibling.textContent=" "+langs[lang].random;
+        document.getElementById("lean-title").textContent = langs[lang].title;
+        document.getElementById("lean-start").textContent = langs[lang].start;
+        document.getElementById("lean-stop").textContent = langs[lang].stop;
+        document.getElementById("lean-now").textContent = langs[lang].now;
+        document.getElementById("lean-random").nextSibling.textContent = " "+langs[lang].random;
         document.getElementById("lean-lock").textContent=fixed?langs[lang].unlock:langs[lang].lock;
         document.getElementById("lean-theme").textContent=darkMode?langs[lang].light:langs[lang].theme;
         document.getElementById("lean-lang").textContent=langs[lang].lang;
-        document.getElementById("lean-status").textContent=running?langs[lang].statusOn:langs[lang].statusOff;
-        document.getElementById("lean-min-label").textContent=langs[lang].minSecs;
-        document.getElementById("lean-max-label").textContent=langs[lang].maxSecs;
     }
 
     // ======== DRAG =========
@@ -302,5 +178,4 @@
         };
         document.onmouseup = ()=>document.onmousemove=null;
     };
-
 })();
