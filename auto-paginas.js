@@ -120,7 +120,7 @@
         box-shadow: 0 3px 8px rgba(0,0,0,0.3);
     }
     `;
-    document.head.appendChild(style);
+     document.head.appendChild(style);
 
     // ======== VARIÁVEIS =========
     let interval = config.defaultInterval;
@@ -135,7 +135,6 @@
     let randomMode = false;
     let stealth = false;
     let lang = "pt";
-    let pages = 0;
     let activeTab = "main";
 
     const langs = {
